@@ -75,18 +75,72 @@ cp analyze-repo.md ~/.claude/commands/analyze-repo.md
 
 ---
 
-## Installation (All Skills)
+### `code-improvement-advisor` — Code Quality Subagent
+
+Analyzes code files for quality improvements, identifies readability issues, performance bottlenecks, and best practice violations. Returns actionable suggestions with before/after code comparisons.
+
+**How to use:**
+
+This is a **subagent** (not a slash command). Claude automatically invokes it when reviewing code quality. You can also trigger it manually by asking Claude to review a file.
+
+```
+# Claude will automatically launch this agent when you say things like:
+"Can you review auth.py for quality issues?"
+"This pipeline.js feels slow and messy, take a look"
+"Do a final pass on utils.py and api_handler.py"
+```
+
+**What it analyzes:**
+
+| Dimension | What It Checks |
+|-----------|---------------|
+| Readability | Naming, complexity, nesting, comments, long functions, magic values |
+| Performance | Algorithm efficiency, repeated computations, caching opportunities, I/O patterns |
+| Best Practices | Language idioms, error handling, security vulnerabilities, DRY violations, SOLID |
+
+**Output format per issue:**
+
+```
+### Issue N: [Title]
+Category: Readability | Performance | Best Practices
+Severity: 🔴 High | 🟡 Medium | 🟢 Low
+Location: filename.ext, line X–Y
+
+Explanation → Current Code → Improved Version → Why This Is Better
+```
+
+Ends with a **Summary** showing total issues by severity and top priority actions.
+
+**Install:**
+```bash
+# Copy to your global Claude agents directory
+cp code-improvement-advisor.md ~/.claude/agents/code-improvement-advisor.md
+```
+
+---
+
+## Installation
 
 ```bash
 # Clone this repo
 git clone git@github.com:greenandoliv/claude-custom-skills.git
 cd claude-custom-skills
 
-# Copy all skills to Claude's global commands directory
-cp *.md ~/.claude/commands/
+# Copy skills (slash commands) to Claude's global commands directory
+cp analyze-repo.md ~/.claude/commands/
+
+# Copy subagents to Claude's global agents directory
+cp code-improvement-advisor.md ~/.claude/agents/
 ```
 
-No restart required — skills are available immediately in Claude Code.
+No restart required — skills and agents are available immediately in Claude Code.
+
+### File locations
+
+| Type | Directory | Invoked as |
+|------|-----------|-----------|
+| Skill (slash command) | `~/.claude/commands/` | `/skill-name [args]` |
+| Subagent | `~/.claude/agents/` | Automatically by Claude or via Agent tool |
 
 ---
 
