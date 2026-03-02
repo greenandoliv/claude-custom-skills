@@ -1,29 +1,43 @@
 # Claude Custom Skills
 
-A collection of reusable [Claude Code](https://claude.ai/code) skills (slash commands) for daily developer workflows.
+A collection of reusable [Claude Code](https://claude.ai/code) extensions for daily developer workflows — slash commands, skills, and subagents.
 
-## What are Claude Code Skills?
+## Claude Code Extension Types
 
-Claude Code skills are custom slash commands stored as markdown files. They let you invoke complex, multi-step AI workflows with a single command — anywhere, across any project.
+Claude Code supports three types of extensions:
 
-- Stored in `~/.claude/commands/` → available globally in all projects
-- Stored in `.claude/commands/` inside a project → available only in that project
-- Invoked as `/skill-name [arguments]` in any Claude Code session
+| Type | Directory | How it's invoked |
+|------|-----------|-----------------|
+| **Slash command** | `~/.claude/commands/` | User types `/name [args]` explicitly |
+| **Skill** | `~/.claude/skills/` | Claude auto-triggers based on conversation context |
+| **Subagent** | `~/.claude/agents/` | Claude spawns as an independent subprocess |
+
+**Skill vs Slash command**: A skill's `description` field acts as a trigger condition — Claude reads it and decides whether to load the skill automatically. A slash command requires explicit user invocation.
 
 ---
 
 ## Skills
 
-### `/analyze-repo` — Code Analysis Agent
+### `analyze-repo` — Code Analysis Skill
+
+Auto-triggered when you ask Claude to analyze a repository or codebase — no slash command needed.
 
 Analyze any GitHub repository or local directory and generate a comprehensive markdown report.
 
 **Usage:**
-```bash
-# Analyze a GitHub repo
-/analyze-repo https://github.com/owner/repo-name
 
-# Analyze a local directory
+Just ask Claude naturally — no slash command required:
+
+```
+"이 GitHub repo 분석해줘: https://github.com/owner/repo-name"
+"이 코드베이스 설명해줘"
+"Analyze this project for me: /path/to/your/project"
+"What does this repo do?"
+```
+
+Or still use the slash command if you prefer:
+```bash
+/analyze-repo https://github.com/owner/repo-name
 /analyze-repo /path/to/your/project
 ```
 
@@ -69,7 +83,10 @@ The skill orchestrates **4 parallel subagents** using Claude's Task tool:
 
 **Install:**
 ```bash
-# Copy to your global Claude commands directory
+# As a skill (auto-triggered by Claude)
+cp skills/analyze-repo/SKILL.md ~/.claude/skills/analyze-repo/SKILL.md
+
+# As a slash command (user-invoked with /analyze-repo)
 cp analyze-repo.md ~/.claude/commands/analyze-repo.md
 ```
 
@@ -126,21 +143,26 @@ cp code-improvement-advisor.md ~/.claude/agents/code-improvement-advisor.md
 git clone git@github.com:greenandoliv/claude-custom-skills.git
 cd claude-custom-skills
 
-# Copy skills (slash commands) to Claude's global commands directory
+# Install skill (auto-triggered by Claude)
+mkdir -p ~/.claude/skills/analyze-repo
+cp skills/analyze-repo/SKILL.md ~/.claude/skills/analyze-repo/SKILL.md
+
+# Install slash command (user-invoked with /analyze-repo)
 cp analyze-repo.md ~/.claude/commands/
 
-# Copy subagents to Claude's global agents directory
+# Install subagent
 cp code-improvement-advisor.md ~/.claude/agents/
 ```
 
-No restart required — skills and agents are available immediately in Claude Code.
+No restart required — all extensions are available immediately in Claude Code.
 
 ### File locations
 
 | Type | Directory | Invoked as |
 |------|-----------|-----------|
-| Skill (slash command) | `~/.claude/commands/` | `/skill-name [args]` |
-| Subagent | `~/.claude/agents/` | Automatically by Claude or via Agent tool |
+| Skill | `~/.claude/skills/<name>/SKILL.md` | Claude auto-triggers from context |
+| Slash command | `~/.claude/commands/` | `/skill-name [args]` |
+| Subagent | `~/.claude/agents/` | Claude spawns via Task tool |
 
 ---
 
@@ -155,15 +177,26 @@ No restart required — skills and agents are available immediately in Claude Co
 
 ## Contributing
 
-Feel free to open a PR with your own skills!
+Feel free to open a PR with your own extensions!
 
-**Skill file format:**
+**Slash command format** (`commands/<name>.md`):
 ```markdown
 ---
-description: "Brief description of what this skill does"
+description: "Brief description"
 argument-hint: "<argument-name>"
-allowed-tools: [list of tools this skill uses]
+allowed-tools: [list of tools]
 ---
 
-[Prompt content — written in natural language, instructing Claude what to do]
+[Prompt content instructing Claude what to do]
+```
+
+**Skill format** (`skills/<name>/SKILL.md`):
+```markdown
+---
+name: skill-name
+description: Use this skill when the user says "...", asks about "...", or mentions "...". [Detailed trigger conditions — Claude reads this to decide when to auto-invoke.]
+allowed-tools: [list of tools]
+---
+
+[Guidance content Claude incorporates into its responses]
 ```
