@@ -92,6 +92,150 @@ cp analyze-repo.md ~/.claude/commands/analyze-repo.md
 
 ---
 
+### `choi-rss` — Threads 피드 요약 Skill
+
+`@choi.openai` Threads 계정의 RSS 피드에서 24시간 이내 게시물을 수집하고, AI 인사이트 요약을 Obsidian에 저장합니다.
+
+**Usage:**
+
+```
+"choi rss"
+"최신 게시물 가져와"
+"/choi-rss"
+```
+
+**What it does:**
+
+1. RSS 피드에서 24시간 이내 게시물 수집 (`curl` + `parse_rss.py`)
+2. 각 게시물의 인사이트, 키워드, 중요도 분석
+3. Obsidian `_Inbox/YYYY-MM-DD choi_claude_skill.md` 저장
+
+**Install:**
+```bash
+mkdir -p ~/.claude/skills/choi-rss/scripts
+cp skills/choi-rss/SKILL.md ~/.claude/skills/choi-rss/
+cp skills/choi-rss/scripts/parse_rss.py ~/.claude/skills/choi-rss/scripts/
+```
+
+---
+
+### `youtube-notebook` — YouTube → NotebookLM Skill
+
+지정된 YouTube 채널에서 24시간 이내 업로드된 영상을 수집하여 NotebookLM 노트북과 AI 오디오 오버뷰를 자동 생성합니다.
+
+**Monitored channels:** Nate Herk, Nick Saraev, Jack, Chase (AI)
+
+**Usage:**
+
+```
+"youtube notebook"
+"유튜브 노트북"
+"영상 수집"
+"/youtube-notebook"
+```
+
+**What it does:**
+
+1. YouTube RSS 피드에서 24시간 이내 영상 수집 (`fetch_youtube.py`)
+2. NotebookLM 노트북 생성 후 영상 URL 소스 추가
+3. AI 오디오 오버뷰 생성 (비동기 폴링)
+4. Obsidian `_Inbox/YYYY-MM-DD youtube notebook.md` 저장
+
+**Install:**
+```bash
+mkdir -p ~/.claude/skills/youtube-notebook/scripts
+cp skills/youtube-notebook/SKILL.md ~/.claude/skills/youtube-notebook/
+cp skills/youtube-notebook/scripts/fetch_youtube.py ~/.claude/skills/youtube-notebook/scripts/
+```
+
+---
+
+### `youtube-list-summarize` — 채널 영상 일괄 요약 Skill
+
+지정된 4개 YouTube 채널에서 24시간 이내 업로드된 영상을 수집하고, 각 영상의 자막을 **병렬**로 추출하여 한국어 요약을 Obsidian에 영상별로 저장합니다.
+
+**Monitored channels:** Nate Herk, Nick Saraev, Jack, Chase (AI)
+
+**Usage:**
+
+```
+"youtube list summarize"
+"유튜브 목록 요약"
+"채널 영상 요약해줘"
+"/youtube-list-summarize"
+```
+
+**What it does:**
+
+1. YouTube RSS 피드에서 24시간 이내 영상 수집 (`fetch_youtube.py`)
+2. 모든 영상에 대해 `general-purpose` 서브에이전트를 **동시에** 병렬 실행
+3. 각 에이전트: `fetch_transcript.py`로 자막 추출 후 한국어 시간순 요약 생성
+4. 메인 SKILL이 에이전트 결과를 수집하여 Obsidian 저장
+5. 각 영상별 `_Inbox/YYYY-MM-DD youtube <채널명> <제목앞10글자>.md` 저장
+
+**Architecture (parallel subagent pattern):**
+
+```
+SKILL.md (orchestrator)
+  ├── fetch_youtube.py → 영상 목록 수집
+  ├── [병렬] Agent 1 → 영상 A 자막 추출 + 요약 → 마크다운 반환
+  ├── [병렬] Agent 2 → 영상 B 자막 추출 + 요약 → 마크다운 반환
+  └── 결과 수집 → mcp-obsidian으로 저장
+```
+
+> 에이전트는 MCP 도구 접근 불가 → 마크다운 내용만 반환, 메인 SKILL이 Obsidian 저장 담당
+
+**Install:**
+```bash
+pip install youtube-transcript-api
+brew install yt-dlp
+mkdir -p ~/.claude/skills/youtube-list-summarize/scripts
+cp skills/youtube-list-summarize/SKILL.md ~/.claude/skills/youtube-list-summarize/
+cp skills/youtube-list-summarize/scripts/fetch_youtube.py ~/.claude/skills/youtube-list-summarize/scripts/
+cp skills/youtube-list-summarize/scripts/fetch_transcript.py ~/.claude/skills/youtube-list-summarize/scripts/
+cp skills/youtube-list-summarize/agents/youtube-video-summarize.md ~/.claude/agents/
+```
+
+---
+
+### `youtube-summarize` — YouTube 영상 요약 Skill
+
+특정 YouTube 영상 URL을 받아 자막을 추출하고, 시간 순으로 한국어 요약을 생성하여 Obsidian에 저장합니다.
+
+**Usage:**
+
+```
+"이 영상 요약해줘: https://youtube.com/watch?v=..."
+"유튜브 요약"
+"/youtube-summarize"
+```
+
+**What it does:**
+
+1. `fetch_transcript.py`로 자막 추출 (한국어 우선, 없으면 영어)
+2. IP 차단 시 yt-dlp로 자동 fallback
+3. 5분 구간별 시간 순 한국어 요약 생성
+4. Obsidian `_Inbox/YYYY-MM-DD youtube <채널명> <제목앞10글자>.md` 저장
+
+**Transcript extraction strategy:**
+
+```
+1차: youtube-transcript-api  →  IpBlocked/RequestBlocked 시
+2차: yt-dlp (VTT 파싱)
+```
+
+**Language priority:** 한국어 수동 → 한국어 자동 → 영어 수동 → 영어 자동
+
+**Install:**
+```bash
+pip install youtube-transcript-api
+mkdir -p ~/.claude/skills/youtube-summarize/scripts
+cp skills/youtube-summarize/SKILL.md ~/.claude/skills/youtube-summarize/
+cp skills/youtube-summarize/scripts/fetch_transcript.py ~/.claude/skills/youtube-summarize/scripts/
+```
+
+---
+
 ### `code-improvement-advisor` — Code Quality Subagent
 
 Analyzes code files for quality improvements, identifies readability issues, performance bottlenecks, and best practice violations. Returns actionable suggestions with before/after code comparisons.
@@ -143,14 +287,37 @@ cp code-improvement-advisor.md ~/.claude/agents/code-improvement-advisor.md
 git clone git@github.com:greenandoliv/claude-custom-skills.git
 cd claude-custom-skills
 
-# Install skill (auto-triggered by Claude)
+# analyze-repo skill + slash command
 mkdir -p ~/.claude/skills/analyze-repo
 cp skills/analyze-repo/SKILL.md ~/.claude/skills/analyze-repo/SKILL.md
-
-# Install slash command (user-invoked with /analyze-repo)
 cp analyze-repo.md ~/.claude/commands/
 
-# Install subagent
+# choi-rss skill
+mkdir -p ~/.claude/skills/choi-rss/scripts
+cp skills/choi-rss/SKILL.md ~/.claude/skills/choi-rss/
+cp skills/choi-rss/scripts/parse_rss.py ~/.claude/skills/choi-rss/scripts/
+
+# youtube-notebook skill
+mkdir -p ~/.claude/skills/youtube-notebook/scripts
+cp skills/youtube-notebook/SKILL.md ~/.claude/skills/youtube-notebook/
+cp skills/youtube-notebook/scripts/fetch_youtube.py ~/.claude/skills/youtube-notebook/scripts/
+
+# youtube-summarize skill
+pip install youtube-transcript-api
+mkdir -p ~/.claude/skills/youtube-summarize/scripts
+cp skills/youtube-summarize/SKILL.md ~/.claude/skills/youtube-summarize/
+cp skills/youtube-summarize/scripts/fetch_transcript.py ~/.claude/skills/youtube-summarize/scripts/
+
+# youtube-list-summarize skill (parallel multi-video summarization)
+pip install youtube-transcript-api
+brew install yt-dlp
+mkdir -p ~/.claude/skills/youtube-list-summarize/scripts
+cp skills/youtube-list-summarize/SKILL.md ~/.claude/skills/youtube-list-summarize/
+cp skills/youtube-list-summarize/scripts/fetch_youtube.py ~/.claude/skills/youtube-list-summarize/scripts/
+cp skills/youtube-list-summarize/scripts/fetch_transcript.py ~/.claude/skills/youtube-list-summarize/scripts/
+cp skills/youtube-list-summarize/agents/youtube-video-summarize.md ~/.claude/agents/
+
+# code-improvement-advisor subagent
 cp code-improvement-advisor.md ~/.claude/agents/
 ```
 
@@ -169,9 +336,22 @@ No restart required — all extensions are available immediately in Claude Code.
 ## Requirements
 
 - [Claude Code](https://claude.ai/code) CLI installed
-- For `/analyze-repo`:
+- For `analyze-repo`:
   - `gh` CLI (for GitHub URL cloning): `brew install gh`
   - An Obsidian vault (or update the output path in the skill file)
+- For `choi-rss`:
+  - An Obsidian vault with MCP configured (`mcp__mcp-obsidian`)
+- For `youtube-notebook`:
+  - NotebookLM MCP configured (`mcp__notebooklm-mcp`) — run `nlm login` to authenticate
+  - An Obsidian vault with MCP configured
+- For `youtube-summarize`:
+  - `pip install youtube-transcript-api`
+  - `yt-dlp` (fallback): `brew install yt-dlp`
+  - An Obsidian vault with MCP configured
+- For `youtube-list-summarize`:
+  - `pip install youtube-transcript-api`
+  - `yt-dlp` (fallback): `brew install yt-dlp`
+  - An Obsidian vault with MCP configured (`mcp__mcp-obsidian`)
 
 ---
 
